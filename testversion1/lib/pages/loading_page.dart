@@ -1,5 +1,7 @@
+// loading_page.dart
+// 앱 실행 시 로딩 후 "챗하기" 버튼을 통해 ChatPage로 이동하는 페이지입니다.
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoadingPage extends StatefulWidget {
   @override
@@ -7,30 +9,6 @@ class LoadingPage extends StatefulWidget {
 }
 
 class _LoadingPageState extends State<LoadingPage> {
-  bool _isSubscribed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkSubscriptionStatus();
-  }
-
-  Future<void> _checkSubscriptionStatus() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isSubscribed = prefs.getBool('subscribed') ?? false;
-    });
-    if (_isSubscribed) {
-      Navigator.pushReplacementNamed(context, '/chat');
-    }
-  }
-
-  Future<void> _subscribe() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('subscribed', true);
-    Navigator.pushReplacementNamed(context, '/chat');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,16 +16,13 @@ class _LoadingPageState extends State<LoadingPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("3일 무료 체험 후 주당 \$3 결제"),
-            ElevatedButton(
-              onPressed: _subscribe,
-              child: const Text("무료 체험 시작"),
-            ),
+            const Text("AI Dating Advisor"),
             ElevatedButton(
               onPressed: () {
-                // 결제 시스템 연동 필요 (Stripe, in_app_purchase 등)
+                print("✅ 챗하기 버튼 클릭됨"); // 👉 콘솔 확인용
+                Navigator.pushNamed(context, '/chat'); // ✅ ChatPage로 이동
               },
-              child: const Text("구독 결제"),
+              child: const Text("챗하기"),
             ),
           ],
         ),
