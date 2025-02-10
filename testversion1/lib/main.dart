@@ -1,9 +1,7 @@
-// main.dart
-// AI Dating Advisor 앱의 메인 파일로, 앱 라우팅 및 초기 페이지 설정을 담당합니다.
-
 import 'package:flutter/material.dart';
-import 'package:testversion1/pages/logs_page.dart';
 import 'package:testversion1/pages/chat_page.dart';
+import 'package:testversion1/pages/logs_page.dart';
+import 'package:testversion1/pages/loading_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,15 +9,18 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI Dating Advisor',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      initialRoute: '/logs',
+      title: 'Chat AI App',
+      // 앱 시작 시 로딩 페이지를 먼저 보여줌
+      initialRoute: '/loading',
       routes: {
-        '/logs': (context) => const LogsPage(),
+        // 올바른 경로 명명 규칙 사용 (앞에 /)
+        '/loading': (context) => const LoadingPage(),
         '/chat': (context) => const ChatPage(),
+        '/logs': (context) => const LogsPage(),
       },
     );
   }
