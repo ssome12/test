@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    // Flutter Gradle Plugin은 Android 및 Kotlin 플러그인 이후에 적용되어야 합니다.
+    id 'dev.flutter.flutter-gradle-plugin'
+    // google-services 플러그인은 보통 파일 하단에 적용합니다.
+}
+
+android {
+    // namespace는 Android 8.0 이상에서 필수로 지정해야 하는 항목입니다.
+    namespace "com.example.myflutterapp"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    defaultConfig {
+        // 앱의 고유 Application ID를 지정합니다.
+        applicationId "com.example.myflutterapp"
+        minSdk flutter.minSdkVersion
+        targetSdk flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // 릴리즈 빌드 시에는 실제 서명 설정을 적용해야 합니다.
+            // 여기서는 디버그 키를 사용합니다.
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
+
+dependencies {
+    // Firebase BoM을 통해 여러 Firebase 라이브러리의 버전을 통합 관리합니다.
+    implementation platform('com.google.firebase:firebase-bom:33.9.0')
+    // 예시: Firebase Analytics (BoM에 의해 버전 관리됨)
+    implementation 'com.google.firebase:firebase-analytics'
+    // 필요한 다른 Firebase 제품의 의존성을 여기에 추가할 수 있습니다.
+    // 예: implementation 'com.google.firebase:firebase-auth'
+}
+
+// 파일의 마지막 줄에 Google 서비스 Gradle 플러그인을 적용합니다.
+apply plugin: 'com.google.gms.google-services'

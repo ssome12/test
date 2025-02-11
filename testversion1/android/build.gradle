@@ -1,0 +1,35 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Android Gradle Plugin 최신 버전 (여기서는 8.2.1 사용)
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        // Google 서비스 Gradle 플러그인 (Firebase SDK가 google-services.json 구성 값에 접근하도록 함)
+        classpath 'com.google.gms:google-services:4.4.2'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+
+tasks.withType(Test).configureEach { test ->
+    test.enabled = false
+}

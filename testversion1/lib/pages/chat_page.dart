@@ -4,7 +4,6 @@ import 'package:flutter/services.dart'; // Clipboard 관련
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart'; // image_picker 패키지 (버전 1.1.2)
-import 'chat_page.dart'; // ChatPage와 LogsPage가 분리되어 있다고 가정
 
 const String groqApiKey =
     "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";
@@ -43,11 +42,14 @@ class _ChatPageState extends State<ChatPage>
   // image_picker 인스턴스
   final ImagePicker _picker = ImagePicker();
 
+  // 내부적으로 현재 로그의 id (수정 모드일 때 사용)
+  String? _currentLogId;
+
   @override
   void initState() {
     super.initState();
 
-    // 초기 로그가 전달된 경우, 기존 메시지와 제목을 복원
+    // 초기 로그가 전달된 경우, 기존 메시지와 제목, id 복원
     if (widget.initialLog != null) {
       var messages = widget.initialLog!["messages"];
       if (messages != null && messages is List) {
@@ -55,6 +57,7 @@ class _ChatPageState extends State<ChatPage>
             messages.map((e) => Map<String, String>.from(e)).toList());
       }
       titleController.text = widget.initialLog!["title"] ?? "";
+      _currentLogId = widget.initialLog!["id"]; // 기존 id 복원
       showGuideText = false;
     }
 
@@ -67,8 +70,8 @@ class _ChatPageState extends State<ChatPage>
   }
 
   /// 로그 저장 함수
-  /// - 직접테스트 입력 모드: 초기 로그가 없으면 새 로그 기록 생성
-  /// - 수정 모드: 기존에 전달된 초기 로그가 있으면 해당 로그를 업데이트합니다.
+  /// - 직접테스트 입력 모드: 기존 로그가 없으면 새 로그 생성, 이후에는 같은 로그를 업데이트합니다.
+  /// - 수정 모드: widget.initialLog가 전달된 경우, 해당 로그를 업데이트합니다.
   Future<void> _saveSessionLog() async {
     if (chatHistory.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,16 +81,13 @@ class _ChatPageState extends State<ChatPage>
 
     final prefs = await SharedPreferences.getInstance();
     final String? logsString = prefs.getString('chat_logs');
-    List<dynamic> logsList = [];
-    if (logsString != null) {
-      logsList = jsonDecode(logsString);
-    }
+    List<dynamic> logsList = logsString != null ? jsonDecode(logsString) : [];
 
     Map<String, dynamic> newLog;
-    if (widget.initialLog != null) {
-      // 수정 모드: 기존 로그를 업데이트 (기존 로그의 id 사용)
+    if (_currentLogId != null) {
+      // 업데이트 모드: 기존 로그 업데이트
       newLog = {
-        "id": widget.initialLog!["id"],
+        "id": _currentLogId,
         "title": titleController.text.isNotEmpty
             ? titleController.text
             : " ",
@@ -96,17 +96,17 @@ class _ChatPageState extends State<ChatPage>
       };
 
       int existingIndex =
-      logsList.indexWhere((log) => log['id'] == widget.initialLog!["id"]);
+      logsList.indexWhere((log) => log['id'] == _currentLogId);
       if (existingIndex >= 0) {
         logsList[existingIndex] = newLog;
       } else {
         logsList.add(newLog);
       }
     } else {
-      // 직접테스트 입력 모드: 새로운 로그 기록 생성 (고유 id 생성)
-      String newId = DateTime.now().millisecondsSinceEpoch.toString();
+      // 직접테스트 입력 모드: 새로운 로그 생성 및 id 저장
+      _currentLogId = DateTime.now().millisecondsSinceEpoch.toString();
       newLog = {
-        "id": newId,
+        "id": _currentLogId,
         "title": titleController.text.isNotEmpty
             ? titleController.text
             : "최근 대화내역",
@@ -198,9 +198,7 @@ class _ChatPageState extends State<ChatPage>
 
   /// 사용자 메시지 기록 및 스크롤 이동
   void _recordUserMessage(String text, String type) {
-    if (text
-        .trim()
-        .isEmpty) return;
+    if (text.trim().isEmpty) return;
     setState(() {
       chatHistory.add({
         "text": text.trim(),
@@ -210,18 +208,17 @@ class _ChatPageState extends State<ChatPage>
       showGuideText = false;
     });
   }
-    // 이미지 메시지 기록 함수 (추가)
-    void _recordImageMessage(String imagePath) {
-      setState(() {
-        chatHistory.add({
-          "type": "image",
-          "imagePath": imagePath,
-          "isAI": "false",
-        });
-        showGuideText = false;
-      });
-      // 필요시 스크롤 이동 처리
 
+  /// 이미지 메시지 기록 함수 (추가)
+  void _recordImageMessage(String imagePath) {
+    setState(() {
+      chatHistory.add({
+        "type": "image",
+        "imagePath": imagePath,
+        "isAI": "false",
+      });
+      showGuideText = false;
+    });
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_chatScrollController.hasClients) {
         _chatScrollController.animateTo(
@@ -278,7 +275,8 @@ class _ChatPageState extends State<ChatPage>
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
         jsonDecode(utf8.decode(response.bodyBytes));
-        final String reply = data["choices"][0]["message"]["content"].trim();
+        final String reply =
+        data["choices"][0]["message"]["content"].trim();
         setState(() {
           chatHistory.add({"text": reply, "isAI": "true"});
         });
@@ -295,7 +293,10 @@ class _ChatPageState extends State<ChatPage>
         });
       } else {
         setState(() {
-          chatHistory.add({"text": "🚨 오류 발생: ${response.statusCode}", "isAI": "true"});
+          chatHistory.add({
+            "text": "🚨 오류 발생: ${response.statusCode}",
+            "isAI": "true"
+          });
         });
       }
     } catch (e) {
@@ -338,7 +339,8 @@ class _ChatPageState extends State<ChatPage>
                     hintText: "이름",
                     border: InputBorder.none,
                   ),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -614,7 +616,8 @@ class _ChatPageState extends State<ChatPage>
                       _buildInputArea(),
                       if (showGuideText)
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 4),
                           child: Text(
                             "! 회신을 받으려면 하나 이상 입력하세요",
                             style: const TextStyle(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';  // 앱 공유를 위해 추가
 import 'chat_page.dart';
 
 class LogsPage extends StatefulWidget {
@@ -33,25 +32,29 @@ class _LogsPageState extends State<LogsPage> {
     }
   }
 
+  Future<void> _saveLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('chat_logs', jsonEncode(logs));
+  }
+
   Future<void> _deleteLog(int index) async {
     setState(() {
       logs.removeAt(index);
     });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('chat_logs', jsonEncode(logs));
+    await _saveLogs();
   }
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      print("선택된 이미지 경로: ${pickedFile.path}");
+      debugPrint("선택된 이미지 경로: ${pickedFile.path}");
       // TODO: 선택된 이미지 파일(pickedFile.path)을 ChatPage에 전달하는 로직 구현
     } else {
-      print("이미지 선택 취소됨");
+      debugPrint("이미지 선택 취소됨");
     }
   }
 
-  // 하단 시트를 띄워 옵션 메뉴를 보여주는 함수
+  // 하단 옵션 시트 표시 (앱 공유 기능 삭제)
   void _showOptionsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -64,7 +67,7 @@ class _LogsPageState extends State<LogsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 이메일 보내주세요
+              // 이메일 보내기
               ListTile(
                 leading: const Icon(Icons.email),
                 title: const Text('이메일을 보내주세요'),
@@ -84,22 +87,7 @@ class _LogsPageState extends State<LogsPage> {
                   }
                 },
               ),
-              // 앱공유해주세요
-              ListTile(
-                leading: const Icon(Icons.share),
-                title: const Text('앱공유해주세요'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  try {
-                    await Share.share('앱 다운로드 링크: https://yourdownloadlink.com');
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('앱 공유를 할 수 없습니다.')),
-                    );
-                  }
-                },
-              ),
-              // 언어
+              // 언어 선택
               ListTile(
                 leading: const Icon(Icons.language),
                 title: const Text('언어'),
@@ -108,7 +96,7 @@ class _LogsPageState extends State<LogsPage> {
                   _showLanguageDialog(context);
                 },
               ),
-              // 업그레이드
+              // 업그레이드 (준비중 메시지)
               ListTile(
                 leading: const Icon(Icons.upgrade),
                 title: const Text('업그레이드'),
@@ -120,7 +108,7 @@ class _LogsPageState extends State<LogsPage> {
                 },
               ),
               const SizedBox(height: 16),
-              // 인스타그램 아이콘 (예시로 카메라 아이콘 사용)
+              // 인스타그램 열기
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.purple),
                 title: const Text('Instagram'),
@@ -136,7 +124,7 @@ class _LogsPageState extends State<LogsPage> {
                 },
               ),
               const SizedBox(height: 8),
-              // 이용약관 & 개인정보 보호 (작은 글씨로 링크)
+              // 이용약관 및 개인정보 보호 링크
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
                 child: Row(
@@ -177,6 +165,7 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
+  // 언어 선택 다이얼로그
   void _showLanguageDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -190,16 +179,16 @@ class _LogsPageState extends State<LogsPage> {
                 title: const Text("한국어"),
                 onTap: () {
                   Navigator.pop(context);
-                  print("한국어 선택");
-                  // 여기서 언어 변경 로직을 구현 (예: SharedPreferences에 저장)
+                  debugPrint("한국어 선택");
+                  // 언어 변경 로직 구현 (예: SharedPreferences에 저장)
                 },
               ),
               ListTile(
                 title: const Text("English"),
                 onTap: () {
                   Navigator.pop(context);
-                  print("English 선택");
-                  // 여기서 언어 변경 로직을 구현
+                  debugPrint("English 선택");
+                  // 언어 변경 로직 구현
                 },
               ),
             ],
@@ -209,16 +198,59 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
+  // 직접 입력 버튼 클릭 시 처리
+  // Navigator.push()를 통해 ChatPage로 이동하고, ChatPage에서 업데이트된 로그를 반환받아 기존 로그를 업데이트합니다.
+  Future<void> _openDirectChat() async {
+    Map<String, dynamic> currentLog;
+    if (logs.isNotEmpty) {
+      // 마지막 로그를 재사용 (이미 진행 중인 대화)
+      currentLog = logs.last;
+    } else {
+      // 로그 목록이 비어 있으면 새 로그 생성
+      currentLog = {
+        'title': '',
+        'messages': [],
+      };
+      setState(() {
+        logs.add(currentLog);
+      });
+      await _saveLogs();
+    }
+    // ChatPage에서 업데이트된 로그를 반환받음
+    final updatedLog = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(initialLog: currentLog),
+      ),
+    );
+    if (updatedLog != null) {
+      // 마지막 로그를 업데이트 (새 로그 추가하지 않고 덮어쓰기)
+      setState(() {
+        logs[logs.length - 1] = updatedLog;
+      });
+      await _saveLogs();
+    }
+  }
+
+  // 타임스탬프를 "yyyy년 MM월 dd일" 형식으로 포맷하는 헬퍼 함수
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      return '${dt.year}년 ${dt.month.toString().padLeft(2, '0')}월 ${dt.day.toString().padLeft(2, '0')}일';
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true, // 헤더가 배경 위에 자연스럽게 오도록 설정
+      extendBodyBehindAppBar: true, // 배경 위에 앱바 표시
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // 헤더 가운데에 이미지와 텍스트("SOME") 배치 (이미지는 assets/some.png 사용)
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -226,11 +258,10 @@ class _LogsPageState extends State<LogsPage> {
             Image.asset(
               'assets/some.png',
               height: 30,
-            )
+            ),
           ],
         ),
         actions: [
-          // 우측 상단에 더보기(옵션) 아이콘만 남김
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () => _showOptionsSheet(context),
@@ -256,8 +287,7 @@ class _LogsPageState extends State<LogsPage> {
                     : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: GridView.builder(
-                    gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
                       crossAxisSpacing: 8.0,
                       mainAxisSpacing: 8.0,
@@ -277,6 +307,7 @@ class _LogsPageState extends State<LogsPage> {
                         List messages = log['messages'];
                         content = messages.last['text'] ?? "";
                       }
+
                       return Card(
                         elevation: 4,
                         shape: RoundedRectangleBorder(
@@ -287,50 +318,48 @@ class _LogsPageState extends State<LogsPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ChatPage(initialLog: log),
+                                builder: (context) => ChatPage(initialLog: log),
                               ),
                             );
                           },
-                          child: Stack(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // 카드 상단: 제목 (왼쪽 가운데 정렬)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // 카드 중앙: 내용 (중앙 정렬)
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
                                       content,
                                       style: const TextStyle(fontSize: 14),
                                       textAlign: TextAlign.center,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: IconButton(
-                                  icon: const Icon(Icons.close, size: 16),
-                                  onPressed: () {
-                                    _deleteLog(index);
-                                  },
-                                ),
-                              ),
-                            ],
+                                // 카드 하단: 기록 날짜 (타임스탬프, 있으면 포맷팅)
+                                if (log.containsKey('timestamp'))
+                                  Text(
+                                    _formatTimestamp(log['timestamp']),
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -346,6 +375,7 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
+  // 하단 버튼 영역
   Widget _buildFooter() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -362,7 +392,7 @@ class _LogsPageState extends State<LogsPage> {
             children: [
               GestureDetector(
                 onTap: () async {
-                  print("스크린샷 업로드 버튼 탭됨");
+                  debugPrint("스크린샷 업로드 버튼 탭됨");
                   await _pickImage();
                 },
                 child: Container(
@@ -394,14 +424,7 @@ class _LogsPageState extends State<LogsPage> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ChatPage(),
-                    ),
-                  );
-                },
+                onTap: _openDirectChat,
                 child: Container(
                   width: 140,
                   height: 50,
