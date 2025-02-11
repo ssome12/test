@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart'; // image_picker 패키지 (버전 1.1.2)
 
 const String groqApiKey =
-    "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";
+    "yout APi KEY";
 const String groqEndpoint =
     "https://api.groq.com/openai/v1/chat/completions";
 
