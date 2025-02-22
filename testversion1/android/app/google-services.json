@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:706161555356:android:670864339f50c64535fa59",
+        "mobilesdk_app_id": "1:706161555356:android:af93a1d4709aeb4b35fa59",
         "android_client_info": {
-          "package_name": "com.example.myflutterapp"
+          "package_name": "com.Raviosa.testversion1"
         }
       },
       "oauth_client": [],

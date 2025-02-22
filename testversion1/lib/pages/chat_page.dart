@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart'; // image_picker 패키지 (버전 1.1.2)
 
 const String groqApiKey =
-    "yout APi KEY";
+    "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";
 const String groqEndpoint =
     "https://api.groq.com/openai/v1/chat/completions";
 
@@ -252,9 +252,11 @@ class _ChatPageState extends State<ChatPage>
       return;
     }
     final String systemPrompt = isHeart
-        ? "너는 최적의 연애 강사야. 지금 상황에서 빠르게 상대의 관심을 끌 수 있는, 핫하고 섹시한 접근법을 한 문장으로 제시해줘. "
-        "상대의 마지막 말을 추적해서, 최적의 연애강사인만큼, 상대를 즐겁게 또 강하게 사로잡을 수 있는 말을 하고, 너무 부담스럽지 않게 접근해야함. 적절한 이모티콘 사용과 매번 다른 답변을 해줘."
-        : "너는 상대방의 채팅에서 상황을 전문적으로 파악해서 알려줘야해. 정보가 부족하면 추가 채팅 입력을 요청하고, 구체적으로 상황을 설명해줘.";
+        ? "너는 최적의 연애 강사야. 지금 상황에서 상대방의 성격, 대화분위기 등을 반영해서 빠르게 상대의 관심을 끌 수 있는 핵심 내용만 한 문장으로 요약해줘. "
+        "상대의 마지막 말을 추적해서, 최적의 연애강사인만큼, 상대를 즐겁게 또 강하게 사로잡을 수 있는 말을 하고, 너무 부담스럽지 않게 접근해야함. 적절한 이모티콘 사용과 매번 다른 답변을 해줘."+
+        "만약 너가 상황이나 문맥을 이해하지 못했더라도, 대화 시작을 자연스럽게 시작해"
+        : "너는 상대방의 채팅에서 상황을 전문적으로 파악해서 알려줘야해. 정보가 부족하면 추가 채팅 입력을 요청하고, 구체적으로 상황을 설명해줘."
+    ;
     try {
       final http.Response response = await http.post(
         Uri.parse(groqEndpoint),

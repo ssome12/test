@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'chat_page.dart';
+import 'screenshot_page.dart';
 
 class LogsPage extends StatefulWidget {
   const LogsPage({Key? key}) : super(key: key);
@@ -47,14 +48,18 @@ class _LogsPageState extends State<LogsPage> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      debugPrint("선택된 이미지 경로: ${pickedFile.path}");
-      // TODO: 선택된 이미지 파일(pickedFile.path)을 ChatPage에 전달하는 로직 구현
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ScreenshotPage(imagePath: pickedFile.path),
+        ),
+      );
     } else {
       debugPrint("이미지 선택 취소됨");
     }
   }
 
-  // 하단 옵션 시트 표시 (앱 공유 기능 삭제)
+  // (기존의 옵션 시트, 언어 선택 다이얼로그 등은 그대로 둡니다)
   void _showOptionsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -67,7 +72,6 @@ class _LogsPageState extends State<LogsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 이메일 보내기
               ListTile(
                 leading: const Icon(Icons.email),
                 title: const Text('이메일을 보내주세요'),
@@ -87,7 +91,6 @@ class _LogsPageState extends State<LogsPage> {
                   }
                 },
               ),
-              // 언어 선택
               ListTile(
                 leading: const Icon(Icons.language),
                 title: const Text('언어'),
@@ -96,7 +99,6 @@ class _LogsPageState extends State<LogsPage> {
                   _showLanguageDialog(context);
                 },
               ),
-              // 업그레이드 (준비중 메시지)
               ListTile(
                 leading: const Icon(Icons.upgrade),
                 title: const Text('업그레이드'),
@@ -108,7 +110,6 @@ class _LogsPageState extends State<LogsPage> {
                 },
               ),
               const SizedBox(height: 16),
-              // 인스타그램 열기
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.purple),
                 title: const Text('Instagram'),
@@ -124,7 +125,6 @@ class _LogsPageState extends State<LogsPage> {
                 },
               ),
               const SizedBox(height: 8),
-              // 이용약관 및 개인정보 보호 링크
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
                 child: Row(
@@ -145,7 +145,7 @@ class _LogsPageState extends State<LogsPage> {
                     const SizedBox(width: 16),
                     InkWell(
                       onTap: () async {
-                        final Uri privacyUri = Uri.parse('https://yourdomain.com/privacy');
+                        final Uri privacyUri = Uri.parse('https://sites.google.com/view/ssomeprivatepolicy/%ED%99%88');
                         if (await canLaunchUrl(privacyUri)) {
                           await launchUrl(privacyUri);
                         }
@@ -165,7 +165,6 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
-  // 언어 선택 다이얼로그
   void _showLanguageDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -198,41 +197,23 @@ class _LogsPageState extends State<LogsPage> {
     );
   }
 
-  // 직접 입력 버튼 클릭 시 처리
-  // Navigator.push()를 통해 ChatPage로 이동하고, ChatPage에서 업데이트된 로그를 반환받아 기존 로그를 업데이트합니다.
+  // 직접테스트 입력 버튼 클릭 시 항상 새로운 대화창(빈 ChatPage)으로 이동하도록 수정
   Future<void> _openDirectChat() async {
-    Map<String, dynamic> currentLog;
-    if (logs.isNotEmpty) {
-      // 마지막 로그를 재사용 (이미 진행 중인 대화)
-      currentLog = logs.last;
-    } else {
-      // 로그 목록이 비어 있으면 새 로그 생성
-      currentLog = {
-        'title': '',
-        'messages': [],
-      };
-      setState(() {
-        logs.add(currentLog);
-      });
-      await _saveLogs();
-    }
-    // ChatPage에서 업데이트된 로그를 반환받음
     final updatedLog = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatPage(initialLog: currentLog),
+        builder: (context) => const ChatPage(), // initialLog을 넘기지 않아 새 대화 시작
       ),
     );
     if (updatedLog != null) {
-      // 마지막 로그를 업데이트 (새 로그 추가하지 않고 덮어쓰기)
       setState(() {
-        logs[logs.length - 1] = updatedLog;
+        logs.add(updatedLog);
       });
       await _saveLogs();
     }
   }
 
-  // 타임스탬프를 "yyyy년 MM월 dd일" 형식으로 포맷하는 헬퍼 함수
+  // 타임스탬프 포맷 헬퍼 함수
   String _formatTimestamp(String timestamp) {
     try {
       final dt = DateTime.parse(timestamp);
@@ -307,60 +288,71 @@ class _LogsPageState extends State<LogsPage> {
                         List messages = log['messages'];
                         content = messages.last['text'] ?? "";
                       }
-
                       return Card(
                         elevation: 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ChatPage(initialLog: log),
+                        child: Stack(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatPage(initialLog: log),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          content,
+                                          style: const TextStyle(fontSize: 14),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                    if (log.containsKey('timestamp'))
+                                      Text(
+                                        _formatTimestamp(log['timestamp']),
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // 카드 상단: 제목 (왼쪽 가운데 정렬)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                // 카드 중앙: 내용 (중앙 정렬)
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      content,
-                                      style: const TextStyle(fontSize: 14),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                // 카드 하단: 기록 날짜 (타임스탬프, 있으면 포맷팅)
-                                if (log.containsKey('timestamp'))
-                                  Text(
-                                    _formatTimestamp(log['timestamp']),
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                              ],
                             ),
-                          ),
+                            // 오른쪽 상단 X 버튼 (로그 삭제)
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                                onPressed: () {
+                                  _deleteLog(index);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },
